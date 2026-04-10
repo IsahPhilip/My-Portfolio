@@ -53,7 +53,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         blogGrid.innerHTML = '';
         data.items.slice(0, 5).forEach(item => {
-          const imageUrl = item.thumbnail || 'assets/img/placeholder.jpg';
+          const imageUrl = item.thumbnail || '/portfolio-frontend/assets/img/default-image.jpg';
           const card = document.createElement('a');
           card.className = 'blog-card';
           card.href = item.link;
@@ -107,13 +107,13 @@ document.addEventListener('DOMContentLoaded', function () {
             const message = document.getElementById('message').value;
 
             try {
-                const response = await fetch('https://portfolio-backend-gfl2.onrender.com/api/contact', {
+                const response = await fetch('/api/contact', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
-                    full_name: formData.get('full_name'),
-                    email: formData.get('email'),
-                    message: formData.get('message')
+                    full_name: full_name,
+                    email: email,
+                    message: message
                   })
                 });
                 const result = await response.json();
@@ -139,12 +139,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const icon = btn.querySelector('i');
     if (!icon) return;
     if (body.classList.contains('dark-mode')) {
-      icon.classList.add('hgi-sun-01');
-      icon.classList.remove('hgi-moon-02');
+      icon.setAttribute('data-lucide', 'sun');
     } else {
-      icon.classList.add('hgi-moon-02');
-      icon.classList.remove('hgi-sun-01');
+      icon.setAttribute('data-lucide', 'moon');
     }
+    // Re-render Lucide icons
+    lucide.createIcons();
   }
 
   function toggleDarkMode() {
@@ -156,6 +156,7 @@ document.addEventListener('DOMContentLoaded', function () {
   // Load saved mode
   if (localStorage.getItem('darkMode') === 'true') {
     body.classList.add('dark-mode');
+    modeBtns.forEach(updateModeIcon);
   }
 
   // Initialize icons & add event listeners
@@ -185,6 +186,97 @@ document.addEventListener('DOMContentLoaded', function () {
         window.Tawk_API.maximize();
       } else {
         showAlert('Chat service unavailable.', 'error');
+      }
+    });
+  }
+
+  // ================= SEARCH FUNCTIONALITY =================
+  const searchToggle = document.querySelector('.search-toggle');
+  const searchModal = document.getElementById('search-modal');
+  const searchInput = document.getElementById('search-input');
+  const searchResults = document.getElementById('search-results');
+  const closeSearch = document.querySelector('.search-modal .close-search');
+
+  function toggleSearchModal() {
+    searchModal.classList.toggle('active');
+    if (searchModal.classList.contains('active')) {
+      searchInput.focus();
+    } else {
+      searchInput.value = '';
+      searchResults.innerHTML = '';
+    }
+  }
+
+  function performSearch() {
+    const query = searchInput.value.trim().toLowerCase();
+    searchResults.innerHTML = '';
+
+    if (!query) {
+      searchResults.innerHTML = '<p class="result-item">Enter a search term to find projects or blog posts.</p>';
+      return;
+    }
+
+    // Collect searchable items (projects and blog posts)
+    const projects = document.querySelectorAll('.project-card');
+    const blogCards = document.querySelectorAll('.blog-card');
+    const results = [];
+
+    // Search projects
+    projects.forEach(project => {
+      const title = project.querySelector('p').textContent.toLowerCase();
+      if (title.includes(query)) {
+        results.push({
+          type: 'Project',
+          title: project.querySelector('p').textContent,
+          link: project.getAttribute('href') || '#work',
+        });
+      }
+    });
+
+    // Search blog posts
+    blogCards.forEach(blog => {
+      const title = blog.querySelector('h4').textContent.toLowerCase();
+      const date = blog.querySelector('p').textContent.toLowerCase();
+      if (title.includes(query) || date.includes(query)) {
+        results.push({
+          type: 'Blog Post',
+          title: blog.querySelector('h4').textContent,
+          link: blog.getAttribute('href') || '#blog',
+          date: blog.querySelector('p').textContent,
+        });
+      }
+    });
+
+    // Display results
+    if (results.length === 0) {
+      searchResults.innerHTML = '<p class="result-item">No results found.</p>';
+    } else {
+      results.forEach(result => {
+        const resultItem = document.createElement('div');
+        resultItem.className = 'result-item';
+        resultItem.innerHTML = `
+          <a href="${result.link}">${result.type}: ${result.title}</a>
+          ${result.date ? `<p>${result.date}</p>` : ''}
+        `;
+        searchResults.appendChild(resultItem);
+      });
+    }
+  }
+
+  // Event Listeners
+  if (searchToggle && searchModal && searchInput && closeSearch) {
+    searchToggle.addEventListener('click', toggleSearchModal);
+    closeSearch.addEventListener('click', toggleSearchModal);
+    searchInput.addEventListener('input', performSearch);
+    searchInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        performSearch();
+      }
+    });
+    // Close modal on Esc key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && searchModal.classList.contains('active')) {
+        toggleSearchModal();
       }
     });
   }
